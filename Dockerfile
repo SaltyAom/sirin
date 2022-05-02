@@ -4,10 +4,10 @@ ENV PKG_CONFIG_ALLOW_CROSS=1
 
 WORKDIR /usr/src/
 
-RUN apk add --no-cache musl-dev ca-certificates cmake musl-utils libressl-dev
-
 # Setup tools for building
-# RUN rustup target add x86_64-unknown-linux-musl
+RUN rustup target add x86_64-unknown-linux-musl
+
+RUN apk add --no-cache musl-dev ca-certificates cmake musl-utils libressl-dev
 
 # ? Create dummy project for package installation caching
 RUN USER=root cargo new sirin
@@ -19,7 +19,7 @@ COPY src src
 COPY Cargo.toml Cargo.toml
 COPY Cargo.lock Cargo.lock
 
-RUN RUSTFLAGS='-C target-cpu=native' cargo install --path .
+RUN RUSTFLAGS='-C target-cpu=native' cargo install --target x86_64-unknown-linux-musl --path .
 
 # * --- Running Stage ---
 FROM frolvlad/alpine-glibc:alpine-3.15_glibc-2.34
@@ -35,8 +35,6 @@ COPY start.sh start.sh
 
 RUN chmod 777 ./start.sh
 
-ENV RUST_BACKTRACE=full
-
 EXPOSE 8080
 
-CMD ["./start.sh"]
+CMD ["./sirin"]
