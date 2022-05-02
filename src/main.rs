@@ -20,25 +20,50 @@ async fn main() -> Result<(), std::io::Error> {
     // let state = Data::new(client.index("hentai"));
     let meilisearch = Client::new("http://0.0.0.0:7700", "masterKey");
 
-    let mut file = File::open(format!("data/searchable{}.json", 1))?;
+    let mut file = File::open(format!("data/searchable{}.json", 3))?;
     let mut content = String::new();
 
     file.read_to_string(&mut content)?;
     let document: Vec<Hentai> = serde_json::from_str(&content)?;
 
-    let engine = meilisearch.index("hentai");
+    let engine = match meilisearch.get_index("hentai").await {
+        Ok(index) => index,
+        Err(_) => {
+            let index = meilisearch
+                .create_index("hentai", Some("id"))
+                .await
+                .expect("Couldn't join the server")
+                .wait_for_completion(&meilisearch, None, None)
+                .await
+                .expect("Couldn't join the remote server")
+                .try_make_index(&meilisearch)
+                .expect("Unable to create index");
+
+            let task = index
+                .set_sortable_attributes(&["id"])
+                .await
+                .expect("Unable to connect to MeiliSearch")
+                .wait_for_completion(&meilisearch, None, None)
+                .await
+                .expect("Couldn't join the remote server");
+
+            if task.is_failure() {
+                panic!("Unable to apply settings")
+            }
+
+            index
+        }
+    };
 
     engine
-        .add_documents_in_batches(&document, Some(30_000), None)
+        .add_or_update(&document, Some("id"))
         .await
-        .expect("Unable to connect to MeiliSearch");
+        .expect("Unable to add documents to batch")
+        .wait_for_completion(&meilisearch, None, None)
+        .await
+        .expect("Unable to join the remote server");
 
-    // engine
-    //     .set_sortable_attributes(&["id"])
-    //     .await
-    //     .expect("Unable to set sortable attributes");
-
-    // println!("Start Sirin");
+    println!("Start Sirin");
 
     HttpServer::new(move || {
         App::new()

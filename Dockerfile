@@ -19,12 +19,12 @@ COPY src src
 COPY Cargo.toml Cargo.toml
 COPY Cargo.lock Cargo.lock
 
-RUN RUSTFLAGS='-C target-cpu=native' cargo install --target x86_64-unknown-linux-musl --path .
+RUN RUSTFLAGS='-C target-cpu=native -C prefer-dynamic' cargo install --target x86_64-unknown-linux-musl --path .
 
 # * --- Running Stage ---
 FROM frolvlad/alpine-glibc:alpine-3.15_glibc-2.34
 
-RUN apk add --no-cache bash
+RUN apk add --no-cache bash build-base openssl-dev libgcc curl
 
 COPY --from=builder /usr/local/cargo/bin/sirin sirin
 COPY meilisearch meilisearch
@@ -35,6 +35,6 @@ COPY start.sh start.sh
 
 RUN chmod 777 ./start.sh
 
-EXPOSE 8080
+EXPOSE 7700 8080
 
 CMD ["./sirin"]
