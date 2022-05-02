@@ -5,10 +5,9 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [profile.release]
-opt-level = 's'
-lto = true
-panic = 'abort'
-codegen-units = 1
+lto = false
+# panic = 'abort'
+# codegen-units = 1
 
 [dependencies]
 actix-web = "4.0.1"

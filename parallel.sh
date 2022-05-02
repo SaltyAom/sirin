@@ -11,5 +11,4 @@ echo "Parallel processes have started";
 
 wait $PID_LIST
 
-echo
 echo "All processes have completed";
