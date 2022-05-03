@@ -8,6 +8,7 @@ import { resolve } from 'path'
 import { path as root } from 'app-root-path'
 
 import type { Hentai } from '@modules/search/types'
+import type { MeiliSearchStatus } from './types'
 
 const ping = async () => {
     let resolve: () => void
@@ -18,10 +19,12 @@ const ping = async () => {
 
     const ping = setInterval(async () => {
         try {
-            await fetch('http://localhost:7700').then((r) => r.text())
-            resolve()
+            const status: MeiliSearchStatus = await fetch('http://localhost:7700/health').then((r) => r.json())
+
+            if(status?.status === "available")
+                resolve()
         } catch (_) {}
-    }, 200)
+    }, 100)
 
     await ready
     clearInterval(ping)
