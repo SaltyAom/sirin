@@ -1,2 +1,2 @@
 #!/bin/bash
-./parallel.sh "./meilisearch" "./sirin"
+./parallel.sh "./meilisearch" "node build"

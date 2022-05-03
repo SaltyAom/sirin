@@ -1,40 +1,76 @@
-# * --- Build Stage ---
-FROM rust:1.60-alpine3.15 AS builder
-ENV PKG_CONFIG_ALLOW_CROSS=1
+# * --- Compile Meilisearch from source ---
+FROM rust:alpine3.14 AS compiler
+RUN apk add -q --update-cache --no-cache build-base openssl-dev git
 
-WORKDIR /usr/src/
+WORKDIR /
 
-# Setup tools for building
-RUN rustup target add x86_64-unknown-linux-musl
+RUN git clone https://github.com/meilisearch/meilisearch
 
-RUN apk add --no-cache musl-dev ca-certificates cmake musl-utils libressl-dev
+WORKDIR /meilisearch
 
-# ? Create dummy project for package installation caching
-RUN USER=root cargo new sirin
-WORKDIR /usr/src/sirin
+ARG COMMIT_SHA
+ARG COMMIT_DATE
+ENV COMMIT_SHA=${COMMIT_SHA} COMMIT_DATE=${COMMIT_DATE}
+ENV RUSTFLAGS="-C target-feature=-crt-static"
 
-# Build project
-COPY data data
-COPY src src
-COPY Cargo.toml Cargo.toml
-COPY Cargo.lock Cargo.lock
+RUN     set -eux; \
+        apkArch="$(apk --print-arch)"; \
+        if [ "$apkArch" = "aarch64" ]; then \
+            export JEMALLOC_SYS_WITH_LG_PAGE=16; \
+        fi && \
+        cargo build --release
 
-RUN RUSTFLAGS='-C target-cpu=native -C prefer-dynamic' cargo install --target x86_64-unknown-linux-musl --path .
+# * --- Node Builder
+FROM node:16-alpine3.14 as builder
 
-# * --- Running Stage ---
-FROM frolvlad/alpine-glibc:alpine-3.15_glibc-2.34
+WORKDIR /usr/app
 
-RUN apk add --no-cache bash build-base openssl-dev libgcc curl
+RUN npm install -g pnpm
 
-COPY --from=builder /usr/local/cargo/bin/sirin sirin
-COPY meilisearch meilisearch
+COPY package.json .
+COPY pnpm-lock.yaml .
+
+RUN pnpm install --frozen-lockfile
+
+COPY . .
+
+RUN pnpm build
+
+# * ====================
+FROM node:16-alpine3.14 as modules
+
+WORKDIR /usr/app
+
+RUN npm install -g pnpm
+
+COPY package.json .
+COPY pnpm-lock.yaml .
+
+RUN pnpm install --frozen-lockfile
+RUN pnpm prune --production
+
+# * ====================
+FROM node:16-alpine3.14 as main
+
+WORKDIR /usr/app/
+
+RUN apk add --no-cache bash curl libgcc
+
+COPY --from=modules /usr/app/node_modules node_modules
+COPY --from=builder /usr/app/build build
+COPY --from=compiler /meilisearch/target/release/meilisearch meilisearch
+COPY package.json .
+
+ENV NODE_ENV production
+
 COPY data data
 
 COPY parallel.sh parallel.sh
 COPY start.sh start.sh
 
+RUN chmod 777 ./meilisearch
 RUN chmod 777 ./start.sh
 
-EXPOSE 7700 8080
+EXPOSE 8080
 
-CMD ["./sirin"]
+CMD ["./start.sh"]
