@@ -46,8 +46,34 @@ RUN npm install -g pnpm
 COPY package.json .
 COPY pnpm-lock.yaml .
 
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --production
 RUN pnpm prune --production
+
+# * ====================
+FROM node:16-alpine3.14 as search-index
+
+WORKDIR /usr/app
+
+RUN apk add --no-cache bash curl libgcc
+
+RUN npm install -g pnpm
+
+COPY package.json .
+COPY pnpm-lock.yaml .
+
+RUN pnpm install --frozen-lockfile
+
+COPY import.ts .
+COPY data data
+COPY parallel.sh parallel.sh
+COPY setup.sh setup.sh
+
+COPY --from=compiler /meilisearch/target/release/meilisearch meilisearch
+
+RUN chmod 777 ./meilisearch
+RUN chmod 777 ./start.sh
+
+RUN pnpm ts-node import.ts
 
 # * ====================
 FROM node:16-alpine3.14 as main
@@ -59,11 +85,10 @@ RUN apk add --no-cache bash curl libgcc
 COPY --from=modules /usr/app/node_modules node_modules
 COPY --from=builder /usr/app/build build
 COPY --from=compiler /meilisearch/target/release/meilisearch meilisearch
+COPY --from=search-index data.ms data.ms
 COPY package.json .
 
 ENV NODE_ENV production
-
-COPY data data
 
 COPY parallel.sh parallel.sh
 COPY start.sh start.sh
