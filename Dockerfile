@@ -63,17 +63,15 @@ COPY pnpm-lock.yaml .
 
 RUN pnpm install --frozen-lockfile
 
-COPY import.ts .
+COPY setup.ts .
+COPY tsconfig.json .
 COPY data data
-COPY parallel.sh parallel.sh
-COPY setup.sh setup.sh
 
 COPY --from=compiler /meilisearch/target/release/meilisearch meilisearch
 
 RUN chmod 777 ./meilisearch
-RUN chmod 777 ./start.sh
 
-RUN pnpm ts-node import.ts
+RUN pnpm ts-node setup.ts
 
 # * ====================
 FROM node:16-alpine3.14 as main
@@ -85,7 +83,7 @@ RUN apk add --no-cache bash curl libgcc
 COPY --from=modules /usr/app/node_modules node_modules
 COPY --from=builder /usr/app/build build
 COPY --from=compiler /meilisearch/target/release/meilisearch meilisearch
-COPY --from=search-index data.ms data.ms
+COPY --from=search-index /usr/app/data.ms data.ms
 COPY package.json .
 
 ENV NODE_ENV production

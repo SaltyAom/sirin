@@ -7,18 +7,22 @@ import { readFile } from 'fs/promises'
 import { resolve } from 'path'
 import { path as root } from 'app-root-path'
 
+import { exec } from 'child_process'
+
 export interface Hentai {
-    id: number,
+    id: number
     title: String
     tags: string[]
     page: number
 }
 
 export interface MeiliSearchStatus {
-    status: "available" | string
+    status: 'available' | string
 }
 
 const ping = async () => {
+    exec('./meilisearch')
+
     let resolve: () => void
 
     const ready = new Promise<void>((r) => {
@@ -78,15 +82,19 @@ const createClient = async () => {
         )
     }
 
-    await Promise.all(importing)
+    const tasks = await Promise.all(importing)
 
-    const tasks = await client.getTasks()
-    await client.waitForTasks(tasks.results.map(({ uid }) => uid), {
-        "intervalMs": 10 * 1000,
-        "timeOutMs": 5 * 60 * 1000
-    })
+    await client.waitForTasks(
+        tasks.map(({ uid }) => uid),
+        {
+            intervalMs: 10 * 1000,
+            timeOutMs: 5 * 60 * 1000
+        }
+    )
 
-    return index
+    console.log('Done Indexing')
+
+    process.exit(0)
 }
 
-export default createClient
+createClient()
