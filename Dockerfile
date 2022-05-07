@@ -86,13 +86,17 @@ COPY --from=compiler /meilisearch/target/release/meilisearch meilisearch
 COPY --from=search-index /usr/app/data.ms data.ms
 COPY package.json .
 
+COPY ./ops/varnish /etc/default/varnish
+COPY ./ops/default.vcl /etc/varnish/default.vcl
+COPY ./ops/default.conf /etc/nginx/conf.d/default.conf
+COPY ./ops/parallel.sh .
+COPY ./ops/start.sh .
+
+RUN chmod 555 ./meilisearch
+RUN chmod 555 ./parallel.sh
+RUN chmod 555 ./start.sh
+
 ENV NODE_ENV production
-
-COPY parallel.sh parallel.sh
-COPY start.sh start.sh
-
-RUN chmod 777 ./meilisearch
-RUN chmod 777 ./start.sh
 
 EXPOSE 8080
 
