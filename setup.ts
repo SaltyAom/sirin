@@ -85,18 +85,21 @@ const createClient = async () => {
     for (let i = 20; i > 1; i--)
         importing.push(
             new Promise<EnqueuedTask>(async (done) => {
-                const file = await readFile(
-                    resolve(root, `./data/searchable${i}.json`),
-                    {
-                        encoding: 'utf-8'
-                    }
-                )
-
                 try {
+                    const file = await readFile(
+                        resolve(root, `./data/searchable${i}.json`),
+                        {
+                            encoding: 'utf-8'
+                        }
+                    )
+
                     done(await index.addDocuments(JSON.parse(file)))
-                } catch (error) {
-                    console.log(`Panic at searchable${i}.json`)
-                    console.log(error)
+                } catch (err) {
+                    console.log(`Unable to parse JSON at searchable${i}.json`)
+                    console.log(err)
+                    console.log('Exiting...')
+
+                    process.exit(1)
                 }
             })
         )
