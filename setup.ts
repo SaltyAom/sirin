@@ -44,6 +44,8 @@ const ping = async () => {
     }, 100)
 
     await ready
+
+    console.log('Pong')
     clearInterval(ping)
 }
 
