@@ -90,7 +90,12 @@ const createClient = async () => {
                     }
                 )
 
-                done(await index.addDocuments(JSON.parse(file)))
+                try {
+                    done(await index.addDocuments(JSON.parse(file)))
+                } catch (error) {
+                    console.log(`Panic at searchable${i}.json`)
+                    console.log(error)
+                }
             })
         )
 
