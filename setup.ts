@@ -41,7 +41,7 @@ const ping = async () => {
         } catch (_) {
             console.log('Failed to ping')
         }
-    }, 100)
+    }, 1000)
 
     await ready
 
