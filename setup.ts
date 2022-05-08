@@ -31,12 +31,16 @@ const ping = async () => {
 
     const ping = setInterval(async () => {
         try {
+            console.log('Pinging Meilisearch')
+
             const status: MeiliSearchStatus = await fetch(
                 'http://localhost:7700/health'
             ).then((r) => r.json())
 
             if (status?.status === 'available') resolve()
-        } catch (_) {}
+        } catch (_) {
+            console.log('Failed to ping')
+        }
     }, 100)
 
     await ready
@@ -69,15 +73,14 @@ const createClient = async () => {
             'words',
             'typo',
             'proximity',
-            'sort',
-            'id:desc'
+            'sort'
         ])
     }
 
     const importing: Promise<EnqueuedTask>[] = []
 
     // Index from newest to oldest
-    for (let i = 20; i > 1; i--) {
+    for (let i = 20; i > 1; i--)
         importing.push(
             new Promise<EnqueuedTask>(async (done) => {
                 const file = await readFile(
@@ -90,9 +93,12 @@ const createClient = async () => {
                 done(await index.addDocuments(JSON.parse(file)))
             })
         )
-    }
 
     const tasks = await Promise.all(importing)
+
+    const signal = setTimeout(() => {
+        console.log('Indexing...')
+    }, 10000)
 
     await client.waitForTasks(
         tasks.map(({ uid }) => uid),
@@ -101,6 +107,8 @@ const createClient = async () => {
             timeOutMs: 5 * 60 * 1000
         }
     )
+
+    clearTimeout(signal)
 
     console.log('Done Indexing')
 
