@@ -25,7 +25,7 @@ const ping = async () => {
 
             if (status?.status === 'available') resolve()
         } catch (_) {}
-    }, 50)
+    }, 100)
 
     await ready
     clearInterval(ping)
@@ -39,4 +39,6 @@ const createClient = async (): Promise<Index<Hentai>> => {
     return await client.getIndex('hentai')
 }
 
-export default createClient
+const meilisearch = createClient()
+
+export default meilisearch
