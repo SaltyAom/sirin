@@ -29,23 +29,23 @@ const ping = async () => {
         resolve = r
     })
 
+    
     const ping = setInterval(async () => {
         try {
-            console.log('Pinging Meilisearch')
-
+            console.log('Pinging Meilisearch...')
             const status: MeiliSearchStatus = await fetch(
-                'http://localhost:7700/health'
+                'http://0.0.0.0:7700/health'
             ).then((r) => r.json())
 
             if (status?.status === 'available') resolve()
         } catch (_) {
-            console.log('Failed to ping')
+            console.log("Failed to ping Meilisearch")
         }
     }, 1000)
 
     await ready
 
-    console.log('Pong')
+    console.log('Connected to Meiliserach')
     clearInterval(ping)
 }
 
@@ -69,14 +69,20 @@ const createClient = async () => {
             searchableAttributes: ['tags', 'title']
         })
 
+        await index.updateSynonyms({
+            "yuri": ["females only"]
+        })
+
         await index.updateRankingRules([
-            'exactness',
-            'attribute',
             'words',
+            'attribute',
+            'sort',
+            'exactness',
             'typo',
             'proximity',
-            'sort'
         ])
+    
+        await index.updateFilterableAttributes(['tags'])
     }
 
     const importing: Promise<EnqueuedTask>[] = []
@@ -106,10 +112,11 @@ const createClient = async () => {
 
     const tasks = await Promise.all(importing)
 
-    const signal = setTimeout(() => {
+    const signal = setInterval(() => {
         console.log('Indexing...')
-    }, 10000)
+    }, 60000)
 
+    console.log("Start Indexing...")
     await client.waitForTasks(
         tasks.map(({ uid }) => uid),
         {
@@ -126,3 +133,19 @@ const createClient = async () => {
 }
 
 createClient()
+
+const updateIndex = async () => {
+    const client = new MeiliSearch({ host: 'http://0.0.0.0:7700' })
+    const index = client.index('hentai')
+
+    await index.updateRankingRules([
+        'words',
+        'attribute',
+        'sort',
+        'exactness',
+        'typo',
+        'proximity',
+    ])
+}
+
+// updateIndex()
