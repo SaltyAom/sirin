@@ -25,14 +25,18 @@ const ping = async () => {
 
             if (status?.status === 'available') resolve()
         } catch (_) {}
-    }, 100)
+    }, 50)
 
     await ready
     clearInterval(ping)
 }
 
+const delay = () => new Promise((resolve) => setTimeout(resolve, 5000))
+
 const createClient = async (): Promise<Index<Hentai>> => {
     await ping()
+
+    await delay()
 
     const client = new MeiliSearch({ host: 'http://0.0.0.0:7700' })
 
