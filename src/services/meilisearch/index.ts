@@ -39,4 +39,6 @@ const createClient = async (): Promise<Index<Hentai>> => {
     return await client.getIndex('hentai')
 }
 
-export default createClient
+const meilisearch = createClient()
+
+export default meilisearch
