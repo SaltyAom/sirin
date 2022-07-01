@@ -1,59 +1,56 @@
-use std::{borrow::BorrowMut, fs::File, io::prelude::Read, sync::Arc};
-
+use reqwest;
 use cached::{proc_macro::cached, TimedCache};
-use futures::future::join_all;
-use meilisearch_sdk::{client::*, indexes::*, search::*};
-use tokio::sync::Mutex;
+use std::{collections::HashMap};
 
-use crate::models::Hentai;
+use meilisearch_sdk::{
+    client::Client,
+    indexes::Index,
+    search::{SearchResult, Query},
+};
 
-// pub async fn create_client() -> Client {
-//     let meilisearch = Client::new("http://0.0.0.0:7700", "masterKey");
+use crate::models::{ Hentai, Status };
 
-//     let shared_client = Arc::new(Mutex::new(meilisearch));
-//     let mut handler = vec![];
+pub async fn create_client() -> Index {
+    let client = Client::new("http://localhost:7700", "masterKey");
 
-//     // 1 to 20
-//     for iteration in 1..21 {
-//         let client = shared_client.clone();
+    client.index("hentai")
+}
 
-//         handler.push(tokio::spawn(async move {
-//             import_search(client, iteration)
-//                 .await
-//                 .expect("Unable to initialize Client");
-//         }));
-//     }
 
-//     join_all(handler).await;
+pub async fn setup() {
+    let client = reqwest::Client::new();
 
-//     println!("Load all fragments");
+    // interval 1s
+    let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(1));
 
-//     let client = shared_client.as_ref().lock().await.to_owned();
+    loop {
+        interval.tick().await;
 
-//     client
-// }
+        match client.get("http://localhost:7700/health").send().await {
+            Ok(response) => {
+                match response.json::<Status>().await {
+                    Ok(res) => {
+                        if res.status == "available" {
+                            break;
+                        }        
+                    },
+                    Err(_) => {
+                        continue;
+                    }
+                }
+            }
+            Err(_) => {
+                continue;
+            }
+        }
+    }
+}
 
-// pub async fn import_search(client: Arc<Mutex<Client>>, batch: u8) -> Result<(), std::io::Error> {
-//     let mut file = File::open(format!("data/searchable{}.json", batch))?;
-//     let mut content = String::new();
-
-//     file.read_to_string(&mut content)?;
-//     let document: Vec<Hentai> = serde_json::from_str(&content)?;
-
-//     let engine = client.lock().await.borrow_mut().index("hentai");
-
-//     engine
-//         .add_documents(&document, Some("id"))
-//         .await
-//         .expect("Unable to connect to MeiliSearch");
-
-//     engine
-//         .set_sortable_attributes(&["id"])
-//         .await
-//         .expect("Unable to set sortable attributes");
-
-//     Ok(())
-// }
+lazy_static! {
+    static ref FILTERS: HashMap<String, &'static str> = HashMap::from([
+        ("yuri".to_owned(), r#"(tags != "yaoi") AND (tags != "yuri or ice") AND (tags != "yuuri") AND (tags != "males only")"#)
+    ]);
+}
 
 #[cached(
     type = "TimedCache<String, Vec<u32>>",
@@ -61,12 +58,20 @@ use crate::models::Hentai;
     convert = r#"{ format!("{}{}",keyword, batch) }"#
 )]
 pub async fn search<'a>(engine: &Index, keyword: String, batch: usize) -> Vec<u32> {
-    let query = Query::new(engine)
-        .with_query(&keyword)
-        .with_limit(25)
-        .with_offset(batch * 25)
-        .with_sort(&["id:desc"])
-        .build();
+    let query = if let Some(filter) = FILTERS.get(&keyword) {
+        Query::new(engine)
+            .with_query(&keyword)
+            .with_limit(25)
+            .with_offset(batch * 25)
+            .with_filter(filter)
+            .build()
+    } else {
+        Query::new(engine)
+            .with_query(&keyword)
+            .with_limit(25)
+            .with_offset(batch * 25)
+            .build()
+    };
 
     match engine.execute_query(&query).await {
         Ok(results) => results
@@ -74,6 +79,6 @@ pub async fn search<'a>(engine: &Index, keyword: String, batch: usize) -> Vec<u3
             .into_iter()
             .map(|hit: SearchResult<Hentai>| hit.result.id)
             .collect(),
-        Err(_) => vec![],
+        Err(_) => vec![]
     }
 }

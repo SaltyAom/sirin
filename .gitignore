@@ -1,4 +1,8 @@
-/target
+target
 .DS_Store
-data
-data.ms
+
+ops/setup/target
+ops/setup/data
+ops/setup/data.ms
+ops/setup/.DS_Store
+ops/setup/meilisearch
