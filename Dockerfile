@@ -23,28 +23,31 @@ COPY Cargo.lock Cargo.lock
 
 RUN cargo build --release
 
-# * --- Build Stage ---
-FROM rust:1.62-alpine3.16 AS indexer
+# ? --- Indexer ---
+FROM rust:1.62 AS indexer
 ENV PKG_CONFIG_ALLOW_CROSS=1
 
 WORKDIR /usr/src/
 
 # Setup tools for building
-RUN apk add --no-cache musl-dev ca-certificates cmake musl-utils libressl-dev openssl-dev zlib
+# RUN apk add --no-cache musl-dev ca-certificates cmake musl-utils libressl-dev openssl-dev zlib
 
 # ? Create dummy project for package installation caching
 RUN USER=root cargo new app
 WORKDIR /usr/src/app
 
 # Build project
-COPY --from=meilisearch /home/meilisearch meilisearch
-
 COPY ops/setup/data data
 COPY ops/setup/src src
 COPY ops/setup/Cargo.toml Cargo.toml
 COPY ops/setup/Cargo.lock Cargo.lock
 
-RUN cargo run --release
+
+
+COPY --from=meilisearch /home/meilisearch ./meilisearch
+RUN chmod 747 ./meilisearch
+
+RUN cargo run
 
 # * --- Running Stage ---
 FROM alpine:3.16

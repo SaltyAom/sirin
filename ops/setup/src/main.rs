@@ -4,6 +4,7 @@ use std::{
     process::{Command, Stdio, exit, Child},
     thread,
     collections::HashMap,
+    env::current_dir
 };
 
 use tokio::{self, task::JoinHandle};
@@ -32,10 +33,16 @@ pub struct Status {
 }
 
 fn start_listener() -> Child {
+    println!("{}/meilisearch", current_dir()
+    .unwrap()
+    .to_str()
+    .unwrap()
+);
+
     let mut child = Command::new("./meilisearch")
         .stdout(Stdio::piped())
         .spawn()
-        .expect("Failed to start ping process");
+        .expect("Failed to start meilisearch");
 
     println!("Started process: {}", child.id());
 
@@ -165,11 +172,11 @@ async fn main() {
 
     setup().await;
 
-    print!("Setup done");
+    println!("Setup done");
 
     create_client().await;
     
-    println!("Done");
+    println!("Import done");
     
     child.kill().unwrap();
     exit(0);
