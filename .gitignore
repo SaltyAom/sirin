@@ -1,5 +1,6 @@
 target
 .DS_Store
+meilisearch
 
 ops/setup/target
 ops/setup/data
