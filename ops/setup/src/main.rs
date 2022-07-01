@@ -34,10 +34,10 @@ pub struct Status {
 
 fn start_listener() -> Child {
     println!("{}/meilisearch", current_dir()
-    .unwrap()
-    .to_str()
-    .unwrap()
-);
+        .unwrap()
+        .to_str()
+        .unwrap()
+    );
 
     let mut child = Command::new("./meilisearch")
         .stdout(Stdio::piped())

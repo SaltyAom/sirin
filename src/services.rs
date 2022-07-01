@@ -58,6 +58,11 @@ lazy_static! {
     convert = r#"{ format!("{}{}",keyword, batch) }"#
 )]
 pub async fn search<'a>(engine: &Index, keyword: String, batch: usize) -> Vec<u32> {
+    // Limitation of Meilisearch
+    if batch > 40 || batch < 1 { 
+        return vec![] 
+    }
+
     let query = if let Some(filter) = FILTERS.get(&keyword) {
         Query::new(engine)
             .with_query(&keyword)

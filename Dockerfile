@@ -1,16 +1,21 @@
 # * --- Meilisearch from source ---
-FROM getmeili/meilisearch:v0.27.0 as meilisearch 
+FROM alpine:3.16 as meilisearch
 
-RUN cp /bin/meilisearch /home/meilisearch
+WORKDIR /home
+
+RUN apk add curl
+
+RUN curl -L https://install.meilisearch.com | sh
 
 # * --- Build Stage ---
-FROM rust:1.62-alpine3.16 AS builder
+FROM rust:1.62-slim-bullseye AS builder
 ENV PKG_CONFIG_ALLOW_CROSS=1
 
 WORKDIR /usr/src/
 
 # Setup tools for building
-RUN apk add --no-cache musl-dev ca-certificates cmake musl-utils libressl-dev
+RUN apt update
+RUN apt install pkg-config libssl-dev -y
 
 # ? Create dummy project for package installation caching
 RUN USER=root cargo new app
@@ -24,13 +29,15 @@ COPY Cargo.lock Cargo.lock
 RUN cargo build --release
 
 # ? --- Indexer ---
-FROM rust:1.62 AS indexer
+FROM rust:1.62-slim-bullseye AS indexer
 ENV PKG_CONFIG_ALLOW_CROSS=1
 
 WORKDIR /usr/src/
 
 # Setup tools for building
 # RUN apk add --no-cache musl-dev ca-certificates cmake musl-utils libressl-dev openssl-dev zlib
+RUN apt update
+RUN apt install pkg-config libssl-dev -y
 
 # ? Create dummy project for package installation caching
 RUN USER=root cargo new app
@@ -42,21 +49,22 @@ COPY ops/setup/src src
 COPY ops/setup/Cargo.toml Cargo.toml
 COPY ops/setup/Cargo.lock Cargo.lock
 
-
-
 COPY --from=meilisearch /home/meilisearch ./meilisearch
 RUN chmod 747 ./meilisearch
 
 RUN cargo run
 
 # * --- Running Stage ---
-FROM alpine:3.16
+FROM debian:11.3
 
-RUN apk add --no-cache build-base openssl-dev libgcc curl
+RUN apt update
+RUN apt install pkg-config libssl-dev -y
 
-COPY --from=builder /usr/src/app/target/release/sirin sirin
-COPY --from=meilisearch /home/meilisearch meilisearch
-COPY --from=indexer /usr/src/app/data.ms data.ms
+WORKDIR /home
+
+COPY --from=builder /usr/src/app/target/release/sirin ./sirin
+COPY --from=meilisearch /home/meilisearch ./meilisearch
+COPY --from=indexer /usr/src/app/data.ms ./data.ms
 
 COPY ops/start.sh start.sh
 

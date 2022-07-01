@@ -6,8 +6,8 @@ mod models;
 mod services;
 
 use actix_web::{web::Data, App, HttpServer};
-use controllers::{ hi, sirin, sirin_batch };
 
+use controllers::{ hi, sirin, sirin_batch };
 use services::{create_client, setup};
 
 #[actix_web::main]
